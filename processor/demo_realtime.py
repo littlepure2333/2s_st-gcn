@@ -14,7 +14,7 @@ from .io import IO
 import tools
 import tools.utils as utils
 # TODO import HRNet_model
-
+from .simple-HRNet.SimpleHRNet import SimpleHRNet
 import cv2
 
 class DemoRealtime(IO):
