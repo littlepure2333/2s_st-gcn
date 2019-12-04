@@ -12,10 +12,12 @@ from .io import IO
 import tools
 import tools.utils as utils
 
+
 class Demo(IO):
     """
         Demo for Skeleton-based Action Recgnition
     """
+
     def start(self):
 
         openpose = '{}/examples/openpose/openpose.bin'.format(self.arg.openpose)
@@ -29,13 +31,13 @@ class Demo(IO):
         with open(label_name_path) as f:
             label_name = f.readlines()
             label_name = [line.rstrip() for line in label_name]
-    
+
         # pose estimation
         openpose_args = dict(
             video=self.arg.video,
             write_json=output_snippets_dir,
             display=0,
-            render_pose=0, 
+            render_pose=0,
             model_pose='COCO')
         command_line = openpose + ' '
         command_line += ' '.join(['--{} {}'.format(k, v) for k, v in openpose_args.items()])
@@ -70,7 +72,7 @@ class Demo(IO):
         output, feature = self.model.extract_feature(data)
         output = output[0]
         feature = feature[0]
-        intensity = (feature*feature).sum(dim=0)**0.5
+        intensity = (feature * feature).sum(dim=0) ** 0.5
         intensity = intensity.cpu().detach().numpy()
         label = output.sum(dim=3).sum(dim=2).sum(dim=1).argmax(dim=0)
         print('Prediction result: {}'.format(label_name[label]))
@@ -79,10 +81,10 @@ class Demo(IO):
         # visualization
         print('\nVisualization...')
         label_sequence = output.sum(dim=2).argmax(dim=0)
-        label_name_sequence = [[label_name[p] for p in l ]for l in label_sequence]
+        label_name_sequence = [[label_name[p] for p in l] for l in label_sequence]
         edge = self.model.graph.edge
         images = utils.visualization.stgcn_visualize(
-            pose, edge, intensity, video,label_name[label] , label_name_sequence, self.arg.height)
+            pose, edge, intensity, video, label_name[label], label_name_sequence, self.arg.height)
         print('Done.')
 
         # save video
@@ -90,7 +92,7 @@ class Demo(IO):
         if not os.path.exists(output_result_dir):
             os.makedirs(output_result_dir)
         writer = skvideo.io.FFmpegWriter(output_result_path,
-                                        outputdict={'-b': '300000000'})
+                                         outputdict={'-b': '300000000'})
         for img in images:
             writer.writeFrame(img)
         writer.close()
@@ -108,17 +110,17 @@ class Demo(IO):
 
         # region arguments yapf: disable
         parser.add_argument('--video',
-            default='./resource/media/skateboarding.mp4',
-            help='Path to video')
+                            default='./resource/media/skateboarding.mp4',
+                            help='Path to video')
         parser.add_argument('--openpose',
-            default='3dparty/openpose/build',
-            help='Path to openpose')
+                            default='3dparty/openpose/build',
+                            help='Path to openpose')
         parser.add_argument('--output_dir',
-            default='./data/demo_result',
-            help='Path to save results')
+                            default='./data/demo_result',
+                            help='Path to save results')
         parser.add_argument('--height',
-            default=1080,
-            type=int)
+                            default=1080,
+                            type=int)
         parser.set_defaults(config='./config/st_gcn/kinetics-skeleton/demo_old.yaml')
         parser.set_defaults(print_log=False)
         # endregion yapf: enable

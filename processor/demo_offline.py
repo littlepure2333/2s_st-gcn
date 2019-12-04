@@ -13,7 +13,8 @@ import skvideo.io
 from .io import IO
 import tools
 import tools.utils as utils
-
+# TODO import HRNet_model
+from pose_estimator.simple_HRNet.SimpleHRNet import SimpleHRNet
 import cv2
 
 class DemoOffline(IO):
@@ -21,6 +22,9 @@ class DemoOffline(IO):
     def start(self):
         
         # initiate
+        video_name = self.arg.video.split('/')[-1].split('.')[0]
+        output_result_dir = self.arg.output_dir
+        output_result_path = '{}/{}.mp4'.format(output_result_dir, video_name)
         label_name_path = './resource/kinetics_skeleton/label_name.txt'
         with open(label_name_path) as f:
             label_name = f.readlines()
@@ -48,6 +52,17 @@ class DemoOffline(IO):
             cv2.imshow("ST-GCN", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+
+        # save video
+        print('\nSaving...')
+        if not os.path.exists(output_result_dir):
+            os.makedirs(output_result_dir)
+        writer = skvideo.io.FFmpegWriter(output_result_path,
+                                         outputdict={'-b': '300000000'})
+        for img in images:
+            writer.writeFrame(img)
+        writer.close()
+        print('The Demo result has been saved in {}.'.format(output_result_path))
 
     def predict(self, data):
         # forward
@@ -93,23 +108,30 @@ class DemoOffline(IO):
 
     def pose_estimation(self):
         # load openpose python api
-        if self.arg.openpose is not None:
-            sys.path.append('{}/python'.format(self.arg.openpose))
-            sys.path.append('{}/build/python'.format(self.arg.openpose))
-        try:
-            from openpose import pyopenpose as op
-        except:
-            print('Can not find Openpose Python API.')
-            return
-
-
-        video_name = self.arg.video.split('/')[-1].split('.')[0]
+        # if self.arg.openpose is not None:
+        #     sys.path.append('{}/python'.format(self.arg.openpose))
+        #     sys.path.append('{}/build/python'.format(self.arg.openpose))
+        # try:
+        #     from openpose import pyopenpose as op
+        # except:
+        #     print('Can not find Openpose Python API.')
+        #     return
 
         # initiate
-        opWrapper = op.WrapperPython()
-        params = dict(model_folder='./models', model_pose='COCO')
-        opWrapper.configure(params)
-        opWrapper.start()
+        # opWrapper = op.WrapperPython()
+        # params = dict(model_folder='./models', model_pose='COCO')
+        # opWrapper.configure(params)
+        # opWrapper.start()
+        # TODO pose_model is simple-HRNet
+        pose_model = SimpleHRNet(
+            self.arg.hrnet_c,
+            self.arg.hrnet_j,
+            self.arg.hrnet_weights,
+            resolution=self.arg.image_resolution,
+            multiperson=not self.arg.single_person,
+            max_batch_size=self.arg.max_batch_size,
+            device=self.arg.device
+        )
         self.model.eval()
         video_capture = cv2.VideoCapture(self.arg.video)
         video_length = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -125,17 +147,24 @@ class DemoOffline(IO):
             ret, orig_image = video_capture.read()
             if orig_image is None:
                 break
-            source_H, source_W, _ = orig_image.shape
-            orig_image = cv2.resize(
-                orig_image, (256 * source_W // source_H, 256))
-            H, W, _ = orig_image.shape
+            # source_H, source_W, _ = orig_image.shape
+            # orig_image = cv2.resize(
+            #     orig_image, (256 * source_W // source_H, 256))
+            # H, W, _ = orig_image.shape
+            H, W = orig_image.shape
             video.append(orig_image)
 
             # pose estimation
-            datum = op.Datum()
-            datum.cvInputData = orig_image
-            opWrapper.emplaceAndPop([datum])
-            multi_pose = datum.poseKeypoints  # (num_person, num_joint, 3)
+            # datum = op.Datum()
+            # datum.cvInputData = orig_image
+            # opWrapper.emplaceAndPop([datum])
+            # multi_pose = datum.poseKeypoints
+            multi_pose_17 = pose_model.predict(orig_image)  # (num_person, num_joint, 3)
+            # TODO 17 joints -> 18 joints
+            neck = 0.5 * (multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :])  # neck is the mean of shoulders
+            multi_pose_18 = np.concatenate((multi_pose_17, neck), 1)
+            # convert coco format to openpose format
+            multi_pose = multi_pose_18[:, [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3], :]
             if len(multi_pose.shape) != 3:
                 continue
 
@@ -178,6 +207,9 @@ class DemoOffline(IO):
         parser.add_argument('--model_fps',
                             default=30,
                             type=int)
+        parser.add_argument('--output_dir',
+                            default='./data/demo_result',
+                            help='Path to save results')
         parser.add_argument('--height',
                             default=1080,
                             type=int,

@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     # add sub-parser
     subparsers = parser.add_subparsers(dest='processor')
-    for k, p in processors.items():
+    for k, p in processors.items():  # key, value: (key, processor)
         subparsers.add_parser(k, parents=[p.get_parser()])
 
     # read arguments

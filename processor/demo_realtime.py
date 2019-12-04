@@ -14,8 +14,9 @@ from .io import IO
 import tools
 import tools.utils as utils
 # TODO import HRNet_model
-from .simple-HRNet.SimpleHRNet import SimpleHRNet
+from pose_estimator.simple_HRNet.SimpleHRNet import SimpleHRNet
 import cv2
+
 
 class DemoRealtime(IO):
     """ A demo for utilizing st-gcn in the realtime action recognition.
@@ -52,15 +53,15 @@ class DemoRealtime(IO):
         # params = dict(model_folder='./models', model_pose='COCO')
         # opWrapper.configure(params)
         # opWrapper.start()
-        # TODO pose_model is simple-HRNet 
+        # TODO pose_model is simple-HRNet
         pose_model = SimpleHRNet(
-            hrnet_c,
-            hrnet_j,
-            hrnet_weights,
-            resolution=image_resolution,
-            multiperson=not single_person,
-            max_batch_size=max_batch_size,
-            device=device
+            self.arg.hrnet_c,
+            self.arg.hrnet_j,
+            self.arg.hrnet_weights,
+            resolution=self.arg.image_resolution,
+            multiperson=not self.arg.single_person,
+            max_batch_size=self.arg.max_batch_size,
+            device=self.arg.device
         )
         self.model.eval()
         pose_tracker = naive_pose_tracker()
@@ -73,7 +74,7 @@ class DemoRealtime(IO):
         # start recognition
         start_time = time.time()
         frame_index = 0
-        while(True):
+        while (True):
 
             tic = time.time()
 
@@ -86,7 +87,7 @@ class DemoRealtime(IO):
             #     orig_image, (256 * source_W // source_H, 256))
             # H, W, _ = orig_image.shape
             H, W = orig_image.shape
-            
+
             # pose estimation
             # datum = op.Datum()
             # datum.cvInputData = orig_image
@@ -94,23 +95,23 @@ class DemoRealtime(IO):
             # multi_pose = datum.poseKeypoints  
             multi_pose_17 = pose_model.predict(orig_image)  # multi_pose: (num_person, num_joint, 3)
             # TODO 17 joints -> 18 joints
-            neck = 0.5 * ( multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :] ) # neck is the mean of shoulders
-            multi_pose_18 = np.concatenate((multi_pose_17, neck), 1) 
+            neck = 0.5 * (multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :])  # neck is the mean of shoulders
+            multi_pose_18 = np.concatenate((multi_pose_17, neck), 1)
             # convert coco format to openpose format
             multi_pose = multi_pose_18[:, [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3], :]
             if len(multi_pose.shape) != 3:
                 continue
 
             # normalization
-            multi_pose[:, :, 0] = multi_pose[:, :, 0]/W
-            multi_pose[:, :, 1] = multi_pose[:, :, 1]/H
+            multi_pose[:, :, 0] = multi_pose[:, :, 0] / W
+            multi_pose[:, :, 1] = multi_pose[:, :, 1] / H
             multi_pose[:, :, 0:2] = multi_pose[:, :, 0:2] - 0.5
             multi_pose[:, :, 0][multi_pose[:, :, 2] == 0] = 0
             multi_pose[:, :, 1][multi_pose[:, :, 2] == 0] = 0
 
             # pose tracking
             if self.arg.video == 'camera_source':
-                frame_index = int((time.time() - start_time)*self.arg.fps)
+                frame_index = int((time.time() - start_time) * self.arg.fps)
             else:
                 frame_index += 1
             pose_tracker.update(multi_pose, frame_index)
@@ -136,7 +137,7 @@ class DemoRealtime(IO):
         output, feature = self.model.extract_feature(data)
         output = output[0]
         feature = feature[0]
-        intensity = (feature*feature).sum(dim=0)**0.5
+        intensity = (feature * feature).sum(dim=0) ** 0.5
         intensity = intensity.cpu().detach().numpy()
 
         # get result
@@ -203,37 +204,38 @@ class DemoRealtime(IO):
                             default=1080,
                             type=int,
                             help='height of frame in the output video.')
-        
+
         # HRNet arguments
-        parser.add_argument("--hrnet_c", "-c", 
-                            help="hrnet parameters - number of channels", 
-                            type=int, 
+        parser.add_argument("--hrnet_c", "-c",
+                            help="hrnet parameters - number of channels",
+                            type=int,
                             default=48)
-        parser.add_argument("--hrnet_j", "-j", 
-                            help="hrnet parameters - number of joints", 
-                            type=int, 
+        parser.add_argument("--hrnet_j", "-j",
+                            help="hrnet parameters - number of joints",
+                            type=int,
                             default=17)
-        parser.add_argument("--hrnet_weights", "-w", 
+        parser.add_argument("--hrnet_weights", "-w",
                             help="hrnet parameters - path to the pretrained weights",
-                            type=str, 
+                            type=str,
                             default="./weights/pose_hrnet_w48_384x288.pth")
-        parser.add_argument("--image_resolution", "-r", 
-                            help="image resolution of HRNet input", 
-                            type=str, 
+        parser.add_argument("--image_resolution", "-r",
+                            help="image resolution of HRNet input",
+                            type=str,
                             default='(384, 288)')
         parser.add_argument("--single_person",
                             help="disable the multiperson detection (YOLOv3 or an equivalen detector is required for"
-                                "multiperson detection)",
+                                 "multiperson detection)",
                             action="store_true")
-        parser.add_argument("--max_batch_size", 
-                            help="maximum batch size used for inference, used for multiperson detector YOLOv3", 
-                            type=int, 
+        parser.add_argument("--max_batch_size",
+                            help="maximum batch size used for inference, used for multiperson detector YOLOv3",
+                            type=int,
                             default=16)
-        parser.add_argument("--device", 
-                            help="device to be used (default: cuda, if available)", 
-                            type=str, 
-                            default=None)
-        
+        # argument "--device" is duplicate with IO (which is the parent class of this class, in io.py)
+        # parser.add_argument("--device",
+        #                     help="device to be used (default: cuda, if available)",
+        #                     type=str,
+        #                     default=None)
+
         # st-gcn default settings
         parser.set_defaults(
             config='./config/st_gcn/kinetics-skeleton/demo_realtime.yaml')
@@ -241,6 +243,7 @@ class DemoRealtime(IO):
         # endregion yapf: enable
 
         return parser
+
 
 class naive_pose_tracker():
     """ A simple tracker for recording person poses and generating skeleton sequences.
@@ -289,7 +292,7 @@ class naive_pose_tracker():
 
                 # padding zero if the trace is fractured
                 pad_mode = 'interp' if latest_frame == self.latest_frame else 'zero'
-                pad = current_frame-latest_frame-1
+                pad = current_frame - latest_frame - 1
                 new_trace = self.cat_pose(trace, p, pad, pad_mode)
                 self.trace_info[matching_trace] = (new_trace, current_frame)
 
@@ -298,7 +301,8 @@ class naive_pose_tracker():
                 self.trace_info.append((new_trace, current_frame))
 
         self.latest_frame = current_frame
-# TODO how many frames are included
+
+    # TODO how many frames are included
     def get_skeleton_sequence(self):
 
         # remove old traces
@@ -332,8 +336,8 @@ class naive_pose_tracker():
                     (trace, np.zeros((pad, num_joint, 3))), 0)
             elif pad_mode == 'interp':
                 last_pose = trace[-1]
-                coeff = [(p+1)/(pad+1) for p in range(pad)]
-                interp_pose = [(1-c)*last_pose + c*pose for c in coeff]
+                coeff = [(p + 1) / (pad + 1) for p in range(pad)]
+                interp_pose = [(1 - c) * last_pose + c * pose for c in coeff]
                 trace = np.concatenate((trace, interp_pose), 0)
         new_trace = np.concatenate((trace, [pose]), 0)
         return new_trace
@@ -344,7 +348,7 @@ class naive_pose_tracker():
         last_pose_xy = trace[-1, :, 0:2]
         curr_pose_xy = pose[:, 0:2]
 
-        mean_dis = ((((last_pose_xy - curr_pose_xy)**2).sum(1))**0.5).mean()
+        mean_dis = ((((last_pose_xy - curr_pose_xy) ** 2).sum(1)) ** 0.5).mean()
         wh = last_pose_xy.max(0) - last_pose_xy.min(0)
         scale = (wh[0] * wh[1]) ** 0.5 + 0.0001
         is_close = mean_dis < scale * self.max_frame_dis
