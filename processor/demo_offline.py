@@ -5,6 +5,7 @@ import argparse
 import json
 import shutil
 import time
+import ast
 
 import numpy as np
 import torch
@@ -20,7 +21,7 @@ import cv2
 class DemoOffline(IO):
 
     def start(self):
-        
+        t1 = time.time()
         # initiate
         video_name = self.arg.video.split('/')[-1].split('.')[0]
         output_result_dir = self.arg.output_dir
@@ -31,9 +32,17 @@ class DemoOffline(IO):
             label_name = [line.rstrip() for line in label_name]
             self.label_name = label_name
 
+        t2 = time.time()
+        print("prepare time: {}".format(t2-t1))
         # pose estimation
         video, data_numpy = self.pose_estimation()
+        # print("data_numpy before:{}".format(data_numpy[0,100]))
+        # data_numpy = data_numpy[:,:,:,[1,0]]
+        # print("data_numpy after:{}".format(data_numpy[0,100]))
+        # print("data_numpy.shape:{}".format(data_numpy.shape))
 
+        t3 = time.time()
+        print("pose estimation time: {}".format(t3-t2))
         # action recognition
         data = torch.from_numpy(data_numpy)
         data = data.unsqueeze(0)
@@ -42,17 +51,19 @@ class DemoOffline(IO):
         # model predict
         voting_label_name, video_label_name, output, intensity = self.predict(data)
 
+        t4 = time.time()
+        print("action recognition time: {}".format(t4-t3))
         # render the video
         images = self.render_video(data_numpy, voting_label_name,
                             video_label_name, intensity, video)
 
-        # visualize
+        '''# visualize
         for image in images:
             image = image.astype(np.uint8)
             cv2.imshow("ST-GCN", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
+'''
         # save video
         print('\nSaving...')
         if not os.path.exists(output_result_dir):
@@ -60,6 +71,8 @@ class DemoOffline(IO):
         writer = skvideo.io.FFmpegWriter(output_result_path,
                                          outputdict={'-b': '300000000'})
         for img in images:
+            img = img.astype(np.uint8)[:,:,[2,1,0]]
+            # print('img.shape: {}'.format(img.shape))
             writer.writeFrame(img)
         writer.close()
         print('The Demo result has been saved in {}.'.format(output_result_path))
@@ -123,14 +136,15 @@ class DemoOffline(IO):
         # opWrapper.configure(params)
         # opWrapper.start()
         # TODO pose_model is simple-HRNet
+        image_resolution = ast.literal_eval(self.arg.image_resolution)
         pose_model = SimpleHRNet(
             self.arg.hrnet_c,
             self.arg.hrnet_j,
             self.arg.hrnet_weights,
-            resolution=self.arg.image_resolution,
+            resolution=image_resolution,
             multiperson=not self.arg.single_person,
             max_batch_size=self.arg.max_batch_size,
-            device=self.arg.device
+            device=self.dev
         )
         self.model.eval()
         video_capture = cv2.VideoCapture(self.arg.video)
@@ -138,11 +152,10 @@ class DemoOffline(IO):
         pose_tracker = naive_pose_tracker(data_frame=video_length)
 
         # pose estimation
-        start_time = time.time()
         frame_index = 0
         video = list()
         while(True):
-
+            start_time = time.time()
             # get image
             ret, orig_image = video_capture.read()
             if orig_image is None:
@@ -151,7 +164,7 @@ class DemoOffline(IO):
             # orig_image = cv2.resize(
             #     orig_image, (256 * source_W // source_H, 256))
             # H, W, _ = orig_image.shape
-            H, W = orig_image.shape
+            H, W, _ = orig_image.shape
             video.append(orig_image)
 
             # pose estimation
@@ -160,26 +173,41 @@ class DemoOffline(IO):
             # opWrapper.emplaceAndPop([datum])
             # multi_pose = datum.poseKeypoints
             multi_pose_17 = pose_model.predict(orig_image)  # (num_person, num_joint, 3)
+            # print('multi_pose_17.shape: {}'.format(multi_pose_17.shape))
+            # print(multi_pose_17)
             # TODO 17 joints -> 18 joints
-            neck = 0.5 * (multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :])  # neck is the mean of shoulders
-            multi_pose_18 = np.concatenate((multi_pose_17, neck), 1)
-            # convert coco format to openpose format
-            multi_pose = multi_pose_18[:, [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3], :]
+            time1 = time.time()
+            print("hrnet time: {}".format(time1-start_time))
+            if multi_pose_17.shape[0] > 0:
+                neck = 0.5 * (multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :])  # neck is the mean of shoulders
+                neck = np.expand_dims(neck, 1)  # shape: [n, 3] -> [n, 1, 3]
+                # print('neck.shape: {}'.format(neck.shape))
+                multi_pose_18 = np.concatenate((multi_pose_17, neck), 1)
+                # print('multi_pose_18.shape: {}'.format(multi_pose_18.shape))
+                # convert coco format to openpose format
+                multi_pose = multi_pose_18[:, [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3], :]
+                time2 = time.time()
+                print("17->18 joints time: {}".format(time2-time1))
+            else:
+                continue
             if len(multi_pose.shape) != 3:
                 continue
 
             # normalization
+            # convert x and y
+            multi_pose = multi_pose[:, :, [1, 0, 2]]
             multi_pose[:, :, 0] = multi_pose[:, :, 0]/W
             multi_pose[:, :, 1] = multi_pose[:, :, 1]/H
             multi_pose[:, :, 0:2] = multi_pose[:, :, 0:2] - 0.5
             multi_pose[:, :, 0][multi_pose[:, :, 2] == 0] = 0
             multi_pose[:, :, 1][multi_pose[:, :, 2] == 0] = 0
-
+            
             # pose tracking
             pose_tracker.update(multi_pose, frame_index)
             frame_index += 1
 
-            print('Pose estimation ({}/{}).'.format(frame_index, video_length))
+            fps = 1. / (time.time() - start_time)
+            print('Pose estimation ({}/{}). frame rate: {} fps.'.format(frame_index, video_length, fps))
 
         data_numpy = pose_tracker.get_skeleton_sequence()
         return video, data_numpy
@@ -214,6 +242,40 @@ class DemoOffline(IO):
                             default=1080,
                             type=int,
                             help='height of frame in the output video.')
+
+        # HRNet arguments
+        parser.add_argument("--hrnet_c",
+                            help="hrnet parameters - number of channels",
+                            type=int,
+                            default=48)
+        parser.add_argument("--hrnet_j", "-j",
+                            help="hrnet parameters - number of joints",
+                            type=int,
+                            default=17)
+        parser.add_argument("--hrnet_weights",
+                            help="hrnet parameters - path to the pretrained weights",
+                            type=str,
+                            #default="./weights/pose_hrnet_w48_384x288.pth")
+                            default="./pose_estimator/simple_HRNet/weights/pose_hrnet_w48_384x288.pth")
+        parser.add_argument("--image_resolution", "-r",
+                            help="image resolution of HRNet input",
+                            type=str,
+                            default='(384, 288)')
+        parser.add_argument("--single_person",
+                            help="disable the multiperson detection (YOLOv3 or an equivalen detector is required for"
+                                 "multiperson detection)",
+                            action="store_true")
+        parser.add_argument("--max_batch_size",
+                            help="maximum batch size used for inference, used for multiperson detector YOLOv3",
+                            type=int,
+                            default=16)
+        # argument "--device" is duplicate with IO (which is the parent class of this class, in io.py)
+        # parser.add_argument("--device",
+        #                     help="device to be used (default: cuda, if available)",
+        #                     type=str,
+        #                     default=None)
+
+        # st-gcn default settings
         parser.set_defaults(
             config='./config/st_gcn/kinetics-skeleton/demo_offline.yaml')
         parser.set_defaults(print_log=False)
