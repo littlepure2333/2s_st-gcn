@@ -9,6 +9,7 @@ model/*
 *.pt
 *.caffemodel
 cache/
+resource/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -109,3 +110,11 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# my_custom
+姿态计计演示.mp4
+action_swipeid.png
+action.png
+pose_estimator/
+models/
+.gitignore

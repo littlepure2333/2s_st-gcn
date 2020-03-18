@@ -75,18 +75,6 @@ class REC_Processor(Processor):
         accuracy = sum(hit_top_k) * 1.0 / len(hit_top_k)
         self.io.print_log('\tTop{}: {:.2f}%'.format(k, 100 * accuracy))
 
-    def my_show_topk(self, k):
-        rank = self.result.argsort()
-        hit_top_k = []
-        for i, l in enumerate(self.label):
-            if l in rank[i][-k:]:
-                hit_top_k.append(1)
-            else:
-                hit_top_k.append(0)
-            self.io.print_log("evaluate:{}, should be {}".format(rank[i], l))
-        accuracy = sum(hit_top_k) * 1.0 / len(hit_top_k)
-        self.io.print_log('\tTop{}: {:.2f}%'.format(k, 100 * accuracy))
-
     def train(self):
         self.model.train()
         self.adjust_lr()
@@ -114,6 +102,13 @@ class REC_Processor(Processor):
             loss_value.append(self.iter_info['loss'])
             self.show_iter_info()
             self.meta_info['iter'] += 1
+            # save model
+            #self.io.print_log("when save model iter:{}".format(self.meta_info['iter']))
+            #if ((self.meta_info['iter'] + 1) % self.arg.save_interval == 0):
+            #    filename = 'iter{}_model.pt'.format(self.meta_info['iter'] + 1)
+            #    self.io.print_log("want to save")
+            #    self.io.save_model(self.model, filename)
+            #    self.io.print_log("should saved")
 
         self.epoch_info['mean_loss']= np.mean(loss_value)
         self.show_epoch_info()
@@ -135,7 +130,7 @@ class REC_Processor(Processor):
 
             # inference
             with torch.no_grad():
-                output = self.model(data)  # shape: [N, num_class]
+                output = self.model(data)
             result_frag.append(output.data.cpu().numpy())
 
             # get loss
@@ -152,7 +147,7 @@ class REC_Processor(Processor):
 
             # show top-k accuracy
             for k in self.arg.show_topk:
-                self.my_show_topk(k)
+                self.show_topk(k)
 
     @staticmethod
     def get_parser(add_help=False):

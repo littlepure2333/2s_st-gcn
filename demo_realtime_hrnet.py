@@ -46,7 +46,7 @@ class DemoRealtime(IO):
         #     print('Can not find Openpose Python API.')
         #     return
 
-        label_name_path = './resource/kinetics_skeleton/label_name.txt'
+        label_name_path = './resource/hrnet/label_name.txt'
         with open(label_name_path) as f:
             label_name = f.readlines()
             label_name = [line.rstrip() for line in label_name]
@@ -97,7 +97,7 @@ class DemoRealtime(IO):
                 frame = frame_buffer.pop()
                 lock.release()
                 now = time.time()
-                print("start a frame: {}".format(now))
+                #print("start a frame: {}".format(now))
             else:
                 # print("continue")
                 continue
@@ -122,7 +122,7 @@ class DemoRealtime(IO):
             # multi_pose = datum.poseKeypoints  
             multi_pose_17 = pose_model.predict(orig_image)  # multi_pose: (num_person, num_joint, 3)
             now1 = time.time()
-            print("pose estimation a frame: {}".format(now1-tic))
+            #print("pose estimation a frame: {}".format(now1-tic))
             # TODO 17 joints -> 18 joints
             if multi_pose_17.shape[0] > 0:
                 neck = 0.5 * (multi_pose_17[:, 5, :] + multi_pose_17[:, 6, :])  # neck is the mean of shoulders
@@ -185,33 +185,15 @@ class DemoRealtime(IO):
             
             print("action class:{}\n".format(voting_label_name))
             # save image
+            #if voting_label_name == "clean_and_jerk":
             if voting_label_name:
                 #image = self.render(data_numpy, voting_label_name, video_label_name, intensity, orig_image, app_fps)
-                action_path = os.path.join("/media/server/20044e3a-4083-4e00-9f02-8268ef503d92/action", voting_label_name+"_"+str(tic)+".png")
+                action_path = os.path.join("./action", voting_label_name+"_"+str(tic)+".png")
                 cv2.imwrite(action_path, image)
                 cv2.imwrite("action.png",image)
             
             if cv2.waitKey(30) & 0xFF == ord('q'):
                 break
-            
-            '''
-            # visualization
-            
-            app_fps = 1 / (time.time() - tic)
-            print("fps:{}".format(app_fps))
-            #image = self.render(data_numpy, voting_label_name,
-            #                    video_label_name, intensity, orig_image, app_fps)
-            #cv2.imshow("ST-GCN", image)
-            
-            print("action class:{}".format(voting_label_name))
-            if voting_label_name == "clean and jerk":
-                image = self.render(data_numpy, voting_label_name, video_label_name, intensity, orig_image, app_fps)
-                cv2.imwrite("clean_and_jerk.png", image)
-            now5 = time.time()
-            print("visualize a frame: {}\n".format(now5-now4))
-            '''
-            #if cv2.waitKey(1) & 0xFF == ord('q'):
-            #    break
             # video_capture.release()
             # print("1111111111")
 
@@ -287,6 +269,10 @@ class DemoRealtime(IO):
                             default=1080,
                             type=int,
                             help='height of frame in the output video.')
+        parser.add_argument("--action",
+                            help="the action name want to save",
+                            type=str,
+                            default="clean_and_jerk")
 
         # HRNet arguments
         parser.add_argument("--hrnet_c",
@@ -329,7 +315,7 @@ class DemoRealtime(IO):
 
         # st-gcn default settings
         parser.set_defaults(
-            config='./config/st_gcn/kinetics-skeleton/demo_realtime.yaml')
+            config='./config/st_gcn/kinetics-skeleton/demo_realtime_hrnet.yaml')
         parser.set_defaults(print_log=False)
         # endregion yapf: enable
 

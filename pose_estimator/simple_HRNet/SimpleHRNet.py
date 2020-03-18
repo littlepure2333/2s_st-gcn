@@ -3,8 +3,8 @@ import numpy as np
 import torch
 from torchvision.transforms import transforms
 
-from models.hrnet import HRNet
-from models.detectors.YOLOv3 import YOLOv3
+from .models.hrnet import HRNet
+from .models.detectors.YOLOv3 import YOLOv3
 
 
 class SimpleHRNet:
@@ -24,9 +24,9 @@ class SimpleHRNet:
                  interpolation=cv2.INTER_CUBIC,
                  multiperson=True,
                  max_batch_size=32,
-                 yolo_model_def="./models/detectors/yolo/config/yolov3.cfg",
-                 yolo_class_path="./models/detectors/yolo/data/coco.names",
-                 yolo_weights_path="./models/detectors/yolo/weights/yolov3.weights",
+                 yolo_model_def="./pose_estimator/simple_HRNet/models/detectors/yolo/config/yolov3.cfg",
+                 yolo_class_path="./pose_estimator/simple_HRNet/models/detectors/yolo/data/coco.names",
+                 yolo_weights_path="./pose_estimator/simple_HRNet/models/detectors/yolo/weights/yolov3.weights",
                  device=torch.device("cpu")):
         """
         Initializes a new SimpleHRNet object.

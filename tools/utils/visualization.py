@@ -1,7 +1,14 @@
 import cv2
 import numpy as np
 
-
+'''
+pose: (3, frame_length, num_joint, num_trace)
+edge: net.utils.graph.py->get_edge()
+feature: intensity =: feature = x.view(N, M, c, t, v).permute(0, 2, 3, 4, 1) # (N, c, t, v, M)
+video: a list of images
+label: voting result
+label_sequence: body label
+'''
 def stgcn_visualize(pose,
                     edge,
                     feature,
@@ -12,7 +19,9 @@ def stgcn_visualize(pose,
                     fps=None):
 
     _, T, V, M = pose.shape
+    print("\t pose length:{}".format(T))
     T = len(video)
+    print("\t video length:{}".format(T))
     pos_track = [None] * M
     for t in range(T):
         frame = video[t]
@@ -28,7 +37,7 @@ def stgcn_visualize(pose,
         text = frame * 0
         for m in range(M):
 
-            score = pose[2, t, :, m].max()
+            score = pose[2, t, :, m].max()  # 如果关节点置信度太低了就跳过
             if score < 0.3:
                 continue
 
@@ -40,12 +49,12 @@ def stgcn_visualize(pose,
                 if xi + yi == 0 or xj + yj == 0:
                     continue
                 else:
-                    xi = int((xi + 0.5) * W)
+                    xi = int((xi + 0.5) * W)  # 四舍五入
                     yi = int((yi + 0.5) * H)
                     xj = int((xj + 0.5) * W)
                     yj = int((yj + 0.5) * H)
                 cv2.line(skeleton, (xi, yi), (xj, yj), (255, 255, 255),
-                         int(np.ceil(2 * scale_factor)))
+                         int(np.ceil(2 * scale_factor)))  # 线的粗细度
 
             if label_sequence is not None:
                 body_label = label_sequence[t // 4][m]
