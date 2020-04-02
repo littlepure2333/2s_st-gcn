@@ -1,0 +1,164 @@
+# sys
+import os
+import sys
+import numpy as np
+import random
+import pickle
+import json
+# torch
+import torch
+import torch.nn as nn
+from torchvision import datasets, transforms
+
+# operation
+from . import tools
+
+
+class Feeder_nmv(torch.utils.data.Dataset):
+    """ Feeder for skeleton-based action recognition in NMV dataset
+    Arguments:
+        data_path: the path to '.npy' data, the shape of data should be (N, C, T, V, M)
+        label_path: the path to label
+        random_choose: If true, randomly choose a portion of the input sequence
+        random_shift: If true, randomly pad zeros at the begining or end of sequence
+        random_move: If true, perform randomly but continuously changed transformation to input sequence
+        window_size: The length of the output sequence
+        pose_matching: If ture, match the pose between two frames
+        num_person_in: The number of people the feeder can observe in the input sequence
+        num_person_out: The number of people the feeder in the output sequence
+        big_class: If true, the class label will be set to big class (rather than small class)
+        debug: If true, only use the first 100 samples
+    """
+
+    def __init__(self,
+                 data_path,
+                 label_path,
+                 ignore_empty_sample=True,
+                 random_choose=False,
+                 random_shift=False,
+                 random_move=False,
+                 window_size=-1,
+                 pose_matching=False,
+                 num_person_in=5,
+                 num_person_out=1,
+                 big_class=True,
+                 debug=False):
+        self.debug = debug
+        self.data_path = data_path
+        self.label_path = label_path
+        self.random_choose = random_choose
+        self.random_shift = random_shift
+        self.random_move = random_move
+        self.window_size = window_size
+        self.num_person_in = num_person_in
+        self.num_person_out = num_person_out
+        self.pose_matching = pose_matching
+        self.ignore_empty_sample = ignore_empty_sample
+        self.big_class = big_class
+
+        self.load_data()
+
+    def load_data(self):
+        # load file list
+        self.sample_name = os.listdir(self.data_path)
+
+        if self.debug:
+            self.sample_name = self.sample_name[0:3]
+
+        # output data shape (N, C, T, V, M)
+        self.N = len(self.sample_name)  #sample
+        self.C = 3  #channel
+        self.T = 300  #frame
+        self.V = 18  #joint
+        self.M = self.num_person_out  #person
+
+    def __len__(self):
+        return len(self.sample_name)
+
+    def __iter__(self):
+        return self
+
+    def __getitem__(self, index):
+
+        # output shape (C, T, V, M)
+        # get data
+        sample_name = self.sample_name[index]
+        sample_path = os.path.join(self.data_path, sample_name)
+        with open(sample_path, 'r') as f:
+            video_info = json.load(f)
+
+        # fill data_numpy
+        data_numpy = np.zeros((self.C, self.T, self.V, self.num_person_in))
+        for frame_info in video_info['annotations']:
+            frame_index = frame_info['frame_index']
+            for m, skeleton_info in enumerate(frame_info["person"]):
+                if m >= self.num_person_in:
+                    break
+                keypoint_17 = skeleton_info['keypoint']
+                # convert 17 keypoints to 18 keypoints
+                if len(keypoint_17) > 0:
+                    neck = 0.5 * (keypoint_17[5] + keypoint_17[6])  # neck is the mean of shoulders
+                    keypoint_17.append(neck)
+                    for index, v in [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3]:
+                        data_numpy[:, frame_index, index, m] = keypoint_17[v]
+
+        # centralization
+        # TODO normalization
+        data_numpy[0:2] = data_numpy[0:2] - 0.5
+        data_numpy[0][data_numpy[2] == 0] = 0
+        data_numpy[1][data_numpy[2] == 0] = 0
+
+        # get label index
+        label = video_info['category_id']
+        if self.big_class:
+            if 0 <= label & label <= 12:
+                label = 0 # 持械
+            elif 13 <= label & label <= 22:
+                label = 1 # 踢
+            elif 23 <= label & label <= 33:
+                label = 2 # 打
+            elif 34 <= label & label <= 38:
+                label = 3 # 扼掐
+            elif 39 <= label & label <= 40:
+                label = 4 # 无暴力
+            else:
+                print("Not exist this label")
+        
+
+        # data augmentation
+        if self.random_shift:
+            data_numpy = tools.random_shift(data_numpy)
+        if self.random_choose:
+            data_numpy = tools.random_choose(data_numpy, self.window_size)
+        elif self.window_size > 0:
+            data_numpy = tools.auto_pading(data_numpy, self.window_size)
+        if self.random_move:
+            data_numpy = tools.random_move(data_numpy)
+
+        # sort by score
+        sort_index = (-data_numpy[2, :, :, :].sum(axis=1)).argsort(axis=1)
+        for t, s in enumerate(sort_index):
+            data_numpy[:, t, :, :] = data_numpy[:, t, :, s].transpose((1, 2,
+                                                                       0))
+        data_numpy = data_numpy[:, :, :, 0:self.num_person_out]
+
+        # match poses between 2 frames
+        if self.pose_matching:
+            data_numpy = tools.openpose_match(data_numpy)
+
+        return data_numpy, label
+
+    def top_k(self, score, top_k):
+        assert (all(self.label >= 0))
+
+        rank = score.argsort()
+        hit_top_k = [l in rank[i, -top_k:] for i, l in enumerate(self.label)]
+        return sum(hit_top_k) * 1.0 / len(hit_top_k)
+
+    def top_k_by_category(self, score, top_k):
+        assert (all(self.label >= 0))
+        return tools.top_k_by_category(self.label, score, top_k)
+
+    def calculate_recall_precision(self, score):
+        assert (all(self.label >= 0))
+        return tools.calculate_recall_precision(self.label, score)
