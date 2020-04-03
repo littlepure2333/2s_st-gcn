@@ -31,7 +31,6 @@ def end_toolbar():
 
 def gendata(
         data_path,
-        label_path,
         data_out_path,
         label_out_path,
         random_choose=False,
@@ -45,7 +44,6 @@ def gendata(
 
     feeder = Feeder_nmv(
         data_path=data_path,
-        label_path=label_path,
         random_choose=False,
         random_shift=False,
         random_move=False,
@@ -79,20 +77,19 @@ def gendata(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Kinetics-skeleton Data Converter.')
+        description='NMV Data Converter.')
     parser.add_argument(
-        '--data_path', default='data/Kinetics/kinetics-skeleton')
+        '--data_path', default='data/nmv')
     parser.add_argument(
-        '--out_folder', default='data/Kinetics/kinetics-skeleton')
+        '--out_folder', default='data/nmv')
     arg = parser.parse_args()
 
     part = ['train', 'val']
     for p in part:
-        data_path = '{}/kinetics_{}'.format(arg.data_path, p)
-        label_path = '{}/kinetics_{}_label.json'.format(arg.data_path, p)
+        data_path = '{}/nmv_{}'.format(arg.data_path, p)
         data_out_path = '{}/{}_data.npy'.format(arg.out_folder, p)
         label_out_path = '{}/{}_label.pkl'.format(arg.out_folder, p)
 
         if not os.path.exists(arg.out_folder):
             os.makedirs(arg.out_folder)
-        gendata(data_path, label_path, data_out_path, label_out_path)
+        gendata(data_path, data_out_path, label_out_path)

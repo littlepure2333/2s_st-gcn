@@ -32,7 +32,6 @@ class Feeder_nmv(torch.utils.data.Dataset):
 
     def __init__(self,
                  data_path,
-                 label_path,
                  ignore_empty_sample=True,
                  random_choose=False,
                  random_shift=False,
@@ -45,7 +44,6 @@ class Feeder_nmv(torch.utils.data.Dataset):
                  debug=False):
         self.debug = debug
         self.data_path = data_path
-        self.label_path = label_path
         self.random_choose = random_choose
         self.random_shift = random_shift
         self.random_move = random_move
@@ -97,19 +95,23 @@ class Feeder_nmv(torch.utils.data.Dataset):
                 keypoint_17 = skeleton_info['keypoint']
                 # convert 17 keypoints to 18 keypoints
                 if len(keypoint_17) > 0:
-                    neck = 0.5 * (keypoint_17[5] + keypoint_17[6])  # neck is the mean of shoulders
+                    neck = [keypoint_17[5][0] + keypoint_17[6][0],
+                            keypoint_17[5][1] + keypoint_17[6][1],
+                            keypoint_17[5][2] + keypoint_17[6][2]] # neck is the mean of shoulders
                     keypoint_17.append(neck)
-                    for index, v in [0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3]:
+                    for index, v in enumerate([0, 17, 6, 8, 10, 5, 7, 9, 12, 14, 16, 11, 13, 15, 2, 1, 4, 3]):
                         data_numpy[:, frame_index, index, m] = keypoint_17[v]
 
         # centralization
         # TODO normalization
-        data_numpy[0:2] = data_numpy[0:2] - 0.5
+        W, H = video_info["info"]["resolution"]
+        data_numpy[0, :, :, :] = data_numpy[0, :, :, :] / W - 0.5
+        data_numpy[1, :, :, :] = data_numpy[1, :, :, :] / H - 0.5
         data_numpy[0][data_numpy[2] == 0] = 0
         data_numpy[1][data_numpy[2] == 0] = 0
 
         # get label index
-        label = video_info['category_id']
+        label = int(video_info['category_id'])
         if self.big_class:
             if 0 <= label & label <= 12:
                 label = 0 # 持械
