@@ -1,0 +1,44 @@
+# 初次尝试，数据都是按大类来分的
+# 内存占用8849M，并未跑满GPU的11G内存
+# TODO 下次尝试加大 batch size
+# 第一次收敛了，但观察loss还有可以再继续收敛的迹象(0.4616318941116333)
+# TODO 下次尝试epoch
+# 但是第二次没收敛，原因是因为random_move??epoch少了??(1.2597299963235855)
+# 第三次有点收敛(0.7718897983431816)
+
+work_dir: ./work_dir/nmv/2
+
+# feeder
+feeder: feeder.feeder.Feeder
+train_feeder_args:
+  random_shift: False
+  random_move: True
+  data_path: ./data/nmv/train_data.npy
+  label_path: ./data/nmv/train_label.pkl
+test_feeder_args:
+  data_path: ./data/nmv/val_data.npy
+  label_path: ./data/nmv/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 5
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# training
+phase: train
+device: [3]
+batch_size: 64
+test_batch_size: 64
+
+#optim
+base_lr: 0.1
+step: [20, 30, 40, 50]
+num_epoch: 50
+
+# evaluation
+show_topk: [1]
