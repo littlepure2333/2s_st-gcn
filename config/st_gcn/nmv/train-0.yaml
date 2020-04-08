@@ -4,9 +4,11 @@
 # 第一次收敛了，但观察loss还有可以再继续收敛的迹象(0.4616318941116333)
 # TODO 下次尝试epoch
 # 但是第二次没收敛，原因是因为random_move??epoch少了??(1.2597299963235855)
-# 第三次有点收敛(0.7718897983431816)
+# TODO 尝试停掉random_move
+# 第三次有点收敛(0.7718897983431816),log和第二次的打到一起了（work_dir忘了改）
+# 总之训练不稳定，可以有很多途径改进
 
-work_dir: ./work_dir/nmv/2
+work_dir: ./work_dir/nmv/0-1
 
 # feeder
 feeder: feeder.feeder.Feeder

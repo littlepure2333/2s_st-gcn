@@ -103,7 +103,6 @@ class Feeder_nmv(torch.utils.data.Dataset):
                         data_numpy[:, frame_index, index, m] = keypoint_17[v]
 
         # centralization
-        # TODO normalization
         W, H = video_info["info"]["resolution"]
         data_numpy[0, :, :, :] = data_numpy[0, :, :, :] / W - 0.5
         data_numpy[1, :, :, :] = data_numpy[1, :, :, :] / H - 0.5

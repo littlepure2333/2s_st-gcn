@@ -1,0 +1,51 @@
+# evaluation时log太多，先去掉（my_show_topk)
+# 停掉random_move
+# batch size: 64->80 （占显存10833M）
+# 第一次准确率刷到接近100%，而且前十几个epoch就收敛了
+# 第二次，准确率没有第一次那么高了（95.59%），也没那么快收敛了
+# 第三次，训的还行
+# 第四次，训的比上次差，改变了log_interval: 10(log和第三次打在了一起)
+# 第五次，训得很差，准确率69.12%，改变了log_interval: 2
+# TODO 加epoch，调lr
+# TODO 让log里打印出来time（io.print_timer)
+# TODO batch size最好改成数据集item数的因数(nmv数据集有544个item)
+
+work_dir: ./work_dir/nmv/1-4
+
+# feeder
+feeder: feeder.feeder.Feeder
+train_feeder_args:
+  random_shift: False
+  random_move: False
+  data_path: ./data/nmv/train_data.npy
+  label_path: ./data/nmv/train_label.pkl
+test_feeder_args:
+  data_path: ./data/nmv/val_data.npy
+  label_path: ./data/nmv/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 5
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# training
+phase: train
+device: [3]
+batch_size: 80
+test_batch_size: 80
+
+#optim
+base_lr: 0.1
+step: [20, 30, 40, 50]
+num_epoch: 50
+
+# evaluation
+show_topk: [1]
+
+# log
+log_interval: 2

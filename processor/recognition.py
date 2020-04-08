@@ -152,7 +152,7 @@ class REC_Processor(Processor):
 
             # show top-k accuracy
             for k in self.arg.show_topk:
-                self.my_show_topk(k)
+                self.show_topk(k)
 
     @staticmethod
     def get_parser(add_help=False):
