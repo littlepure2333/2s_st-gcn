@@ -7,3 +7,4 @@ imageio
 scikit-video
 torch
 torchvision
+tensorboard

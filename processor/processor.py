@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 # torchlight
 import torchlight
@@ -17,6 +18,7 @@ from torchlight import DictAction
 from torchlight import import_class
 
 from .io import IO
+import tools.utils as utils
 
 class Processor(IO):
     """
@@ -40,6 +42,9 @@ class Processor(IO):
         self.iter_info = dict()
         self.epoch_info = dict()
         self.meta_info = dict(epoch=0, iter=0)
+        # tensorboard writer (https://pytorch.org/docs/stable/tensorboard.html)
+        tensorboard_dir = self.arg.work_dir + "/" + "train"
+        self.train_writer = SummaryWriter(tensorboard_dir)
 
     def load_optimizer(self):
         pass
@@ -109,7 +114,8 @@ class Processor(IO):
                 self.meta_info['epoch'] = epoch
 
                 # training
-                self.io.print_log('Training epoch: {}'.format(epoch))
+                trining_epoch = utils.printer.change_font_color('Training epoch: {}'.format(epoch), "red")
+                self.io.print_log(trining_epoch)
                 self.train()
                 self.io.print_log('Done.')
 
@@ -122,7 +128,8 @@ class Processor(IO):
                 # evaluation
                 if ((epoch + 1) % self.arg.eval_interval == 0) or (
                         epoch + 1 == self.arg.num_epoch):
-                    self.io.print_log('Eval epoch: {}'.format(epoch))
+                    eval_epoch = utils.printer.change_font_color('Eval epoch: {}'.format(epoch), "green")
+                    self.io.print_log(eval_epoch)
                     self.test()
                     self.io.print_log('Done.')
         # test phase

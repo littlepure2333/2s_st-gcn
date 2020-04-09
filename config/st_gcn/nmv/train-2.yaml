@@ -1,0 +1,51 @@
+# batch size: 80->68 (68*8=544,nmv数据集有544个item)
+# step,num_epoch改了
+# 让log里打印出来time（io.print_timer)
+# 加了tensorboard可视化loss和accuracy
+# 第一次训得非常好，收敛的很棒，准确率到达了99.8%，看来lr调的可以
+# 第二次训得跟第一次差不多，看起来这样训得很稳定，然后也统计时间发现一iteration训练中tensorboard占的时间有70%
+# 第三次改了 random_move:False->True 结果训得可差了，准确率38.24%
+# 第四次要好一点，70.59%
+# 第五次又要好一些，89.15%
+# 第六次更好了，94.30%
+# 第七次差了些，88.24%
+
+work_dir: ./work_dir/nmv/2-7
+
+# feeder
+feeder: feeder.feeder.Feeder
+train_feeder_args:
+  random_shift: False
+  random_move: True
+  data_path: ./data/nmv/train_data.npy
+  label_path: ./data/nmv/train_label.pkl
+test_feeder_args:
+  data_path: ./data/nmv/val_data.npy
+  label_path: ./data/nmv/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 5
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# training
+phase: train
+device: [1]
+batch_size: 68
+test_batch_size: 68
+
+#optim
+base_lr: 0.1
+step: [20, 40, 60, 70]
+num_epoch: 80
+
+# evaluation
+show_topk: [1]
+
+# log
+log_interval: 2

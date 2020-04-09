@@ -17,6 +17,7 @@ from torchlight import DictAction
 from torchlight import import_class
 
 from .processor import Processor
+import tools.utils as utils
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -73,7 +74,9 @@ class REC_Processor(Processor):
         rank = self.result.argsort()
         hit_top_k = [l in rank[i, -k:] for i, l in enumerate(self.label)]
         accuracy = sum(hit_top_k) * 1.0 / len(hit_top_k)
-        self.io.print_log('\tTop{}: {:.2f}%'.format(k, 100 * accuracy))
+        self.train_writer.add_scalar("accuracy", accuracy, self.meta_info['iter'])
+        topk = utils.printer.change_font_color('\tTop{}: {:.2f}%'.format(k, 100 * accuracy), "blue")
+        self.io.print_log(topk)
 
     def my_show_topk(self, k):
         rank = self.result.argsort()
@@ -88,32 +91,39 @@ class REC_Processor(Processor):
         self.io.print_log('\tTop{}: {:.2f}%'.format(k, 100 * accuracy))
 
     def train(self):
-        self.model.train()
+        self.model.train() # Set the model in training mode
         self.adjust_lr()
         loader = self.data_loader['train']
         loss_value = []
 
         for data, label in loader:
+            # init timer
+            self.io.init_timer("get_data","forward","backward","statistics")
 
             # get data
             data = data.float().to(self.dev)
             label = label.long().to(self.dev)
+            self.io.check_time("get_data")
 
             # forward
             output = self.model(data)
             loss = self.loss(output, label)
+            self.io.check_time("forward")
 
             # backward
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            self.io.check_time("backward")
 
             # statistics
             self.iter_info['loss'] = loss.data.item()
             self.iter_info['lr'] = '{:.6f}'.format(self.lr)
             loss_value.append(self.iter_info['loss'])
+            self.train_writer.add_scalar("loss", self.iter_info['loss'], self.meta_info['iter'])
             self.show_iter_info()
             self.meta_info['iter'] += 1
+            self.io.check_time("statistics")
 
         self.epoch_info['mean_loss']= np.mean(loss_value)
         self.show_epoch_info()
