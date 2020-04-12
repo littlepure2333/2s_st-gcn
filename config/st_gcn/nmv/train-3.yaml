@@ -1,0 +1,43 @@
+# 调整训练时间->250 epoch (8 iteration every epoch)
+# 第一次训就给他训老实了，小样的不给你两下子你不好好训是吧，在 100 epoch左右就准确率100%了
+# 第二次忘了改文件夹了，和第一次训得差不多，离100%非常近
+
+work_dir: ./work_dir/nmv/3-1
+
+# feeder
+feeder: feeder.feeder.Feeder
+train_feeder_args:
+  random_shift: False
+  random_move: True
+  data_path: ./data/nmv/train_data.npy
+  label_path: ./data/nmv/train_label.pkl
+test_feeder_args:
+  data_path: ./data/nmv/val_data.npy
+  label_path: ./data/nmv/val_label.pkl
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 5
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+
+# training
+phase: train
+device: [1]
+batch_size: 68
+test_batch_size: 68
+
+#optim
+base_lr: 0.1
+step: [50, 100, 150, 200]
+num_epoch: 250
+
+# evaluation
+show_topk: [1]
+
+# log
+log_interval: 2
