@@ -44,11 +44,11 @@ def gendata(
 
     feeder = Feeder_nmv(
         data_path=data_path,
-        random_choose=False,
-        random_shift=False,
-        random_move=False,
-        pose_matching=False,
-        big_class=True,
+        random_choose=random_choose,
+        random_shift=random_shift,
+        random_move=random_move,
+        pose_matching=pose_matching,
+        big_class=big_class,
         num_person_in=num_person_in,
         num_person_out=num_person_out,
         window_size=max_frame)
