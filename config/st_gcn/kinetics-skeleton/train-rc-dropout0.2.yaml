@@ -1,4 +1,4 @@
-work_dir: ./work_dir/recognition/kinetics_skeleton/ST_GCN/rc_dropout0.5
+work_dir: ./work_dir/recognition/kinetics_skeleton/ST_GCN/rc_dropout0.2
 
 # feeder
 feeder: feeder.feeder.Feeder
@@ -18,7 +18,7 @@ model_args:
   in_channels: 3
   num_class: 400
   edge_importance_weighting: True
-  dropout: 0.5
+  dropout: 0.2
   graph_args:
     layout: 'openpose'
     strategy: 'spatial'
@@ -29,7 +29,7 @@ model_args:
 # test_batch_size: 256
 
 # training
-device: [3]
+device: [2]
 batch_size: 36
 test_batch_size: 36
 
