@@ -27,7 +27,7 @@ class DemoOffline(IO):
         output_result_dir = self.arg.output_dir
         output_result_path = '{}/{}.mp4'.format(output_result_dir, video_name)
         # label_name_path = './resource/hrnet/label_name.txt'
-        label_name_path = './resource/kinetics_skeleton/label_name.txt'
+        label_name_path = self.arg.label_name_path
         with open(label_name_path) as f:
             label_name = f.readlines()
             label_name = [line.rstrip() for line in label_name]
@@ -240,6 +240,9 @@ class DemoOffline(IO):
         parser.add_argument('--video',
                             default='./resource/media/skateboarding.mp4',
                             help='Path to video')
+        parser.add_argument('--label_name_path',
+                            default='./resource/kinetics_skeleton/label_name.txt',
+                            help='Path to label name')
         parser.add_argument('--openpose',
                             default=None,
                             help='Path to openpose')
@@ -299,7 +302,7 @@ class DemoOffline(IO):
 
         # st-gcn default settings
         parser.set_defaults(
-            config='./config/st_gcn/kinetics-skeleton/demo_offline.yaml')
+            config='./config/st_gcn/nmv/demo_offline_hrnet.yaml')
             # config='./config/st_gcn/kinetics-skeleton/demo_offline_hrnet.yaml')
         parser.set_defaults(print_log=False)
         # endregion yapf: enable

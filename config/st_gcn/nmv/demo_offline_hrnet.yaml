@@ -1,0 +1,41 @@
+weights: ./work_dir/nmv/4-1/epoch250_model.pt
+model_fps: 30
+label_name_path: ./resource/nmv/label_name.txt
+
+# model
+model: net.st_gcn.Model
+model_args:
+  in_channels: 3
+  num_class: 5
+  edge_importance_weighting: True
+  graph_args:
+    layout: 'openpose'
+    strategy: 'spatial'
+    
+# training
+device: [0]
+# ignore_weights
+ignore_weights: 
+ - data_bn.num_batches_tracked
+ - st_gcn_networks.0.tcn.0.num_batches_tracked
+ - st_gcn_networks.0.tcn.3.num_batches_tracked
+ - st_gcn_networks.1.tcn.0.num_batches_tracked
+ - st_gcn_networks.1.tcn.3.num_batches_tracked
+ - st_gcn_networks.2.tcn.0.num_batches_tracked
+ - st_gcn_networks.2.tcn.3.num_batches_tracked
+ - st_gcn_networks.3.tcn.0.num_batches_tracked
+ - st_gcn_networks.3.tcn.3.num_batches_tracked
+ - st_gcn_networks.4.tcn.0.num_batches_tracked
+ - st_gcn_networks.4.tcn.3.num_batches_tracked
+ - st_gcn_networks.4.residual.1.num_batches_tracked
+ - st_gcn_networks.5.tcn.0.num_batches_tracked
+ - st_gcn_networks.5.tcn.3.num_batches_tracked
+ - st_gcn_networks.6.tcn.0.num_batches_tracked
+ - st_gcn_networks.6.tcn.3.num_batches_tracked
+ - st_gcn_networks.7.tcn.0.num_batches_tracked
+ - st_gcn_networks.7.tcn.3.num_batches_tracked
+ - st_gcn_networks.7.residual.1.num_batches_tracked
+ - st_gcn_networks.8.tcn.0.num_batches_tracked
+ - st_gcn_networks.8.tcn.3.num_batches_tracked
+ - st_gcn_networks.9.tcn.0.num_batches_tracked
+ - st_gcn_networks.9.tcn.3.num_batches_tracked
