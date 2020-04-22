@@ -79,26 +79,26 @@ def stgcn_visualize(pose,
 
         # generate mask
         mask = frame * 0
-        feature = np.abs(feature)
-        feature = feature / feature.mean()
-        for m in range(M):
-            score = pose[2, t, :, m].max()
-            if score < 0.3:
-                continue
+        # feature = np.abs(feature)
+        # feature = feature / feature.mean()
+        # for m in range(M):
+        #     score = pose[2, t, :, m].max()
+        #     if score < 0.3:
+        #         continue
 
-            f = feature[t // 4, :, m]**5
-            if f.mean() != 0:
-                f = f / f.mean()
-            for v in range(V):
-                x = pose[0, t, v, m]
-                y = pose[1, t, v, m]
-                if x + y == 0:
-                    continue
-                else:
-                    x = int((x + 0.5) * W)
-                    y = int((y + 0.5) * H)
-                cv2.circle(mask, (x, y), 0, (255, 255, 255),
-                           int(np.ceil(f[v]**0.5 * 8 * scale_factor)))
+        #     f = feature[t // 4, :, m]**5
+        #     if f.mean() != 0:
+        #         f = f / f.mean()
+        #     for v in range(V):
+        #         x = pose[0, t, v, m]
+        #         y = pose[1, t, v, m]
+        #         if x + y == 0:
+        #             continue
+        #         else:
+        #             x = int((x + 0.5) * W)
+        #             y = int((y + 0.5) * H)
+        #         cv2.circle(mask, (x, y), 0, (255, 255, 255),
+        #                    int(np.ceil(f[v]**0.5 * 8 * scale_factor)))
         blurred_mask = cv2.blur(mask, (12, 12))
 
         skeleton_result = blurred_mask.astype(float) * 0.75
